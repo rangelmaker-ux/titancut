@@ -12,9 +12,10 @@ timeline/bin separada ("Titan Cut Selects"), tudo com pesos, limiar, dip
 e filtro de movimento ajustáveis pela UI (ou por um dos presets prontos).
 
 STATUS:
-- Fluxo de análise + marcadores: testado de ponta a ponta dentro do
-  DaVinci Resolve real (Windows). Dois bugs de integração encontrados e
-  corrigidos nesse teste manual:
+- Fluxo completo (análise, presets, pesos/dip/filtro de movimento
+  ajustáveis, flags automáticas, marcadores e criação de subclipes/bin)
+  testado de ponta a ponta dentro do DaVinci Resolve real (Windows).
+  Três bugs de integração encontrados e corrigidos em teste manual:
   1. cv2.VideoCapture() sem especificar o backend usava Media Foundation
      (decodificação por GPU) no Windows, que trava o processo inteiro ao
      rodar dentro do Resolve (que já usa a GPU pra exibir o mesmo clipe).
@@ -26,15 +27,16 @@ STATUS:
      mas Timeline.AddMarker() espera frame RELATIVO ao início da timeline.
      Sem a conversão, AddMarker() retornava True mas o marcador nunca
      aparecia visível. Corrigido em add_markers_for_segments().
-- Pesos/dip/filtro de movimento/presets/flags: lógica implementada e
-  coberta por teste automatizado do motor (tests/test_engine.py), mas a
-  UI NOVA em si (sliders extras, combo de preset) AINDA NÃO foi clicada
-  dentro do Resolve real nesta rodada — a sessão que fez o teste manual
-  anterior perdeu a conexão com o computador antes de chegar aqui.
-- Criar subclipes/bin: usa MediaPool.AppendToTimeline() pra montar uma
-  timeline nova ("Titan Cut Selects") com cada segmento aprovado. Segue a
-  API documentada do Resolve, mas AINDA NÃO foi testado dentro do app —
-  é o próximo ponto a verificar manualmente (ver add_subclips_for_segments).
+  3. Timeline.AddMarker(frameId, ...) retorna False silenciosamente quando
+     frameId=0 (o Resolve não aceita marcador no primeiríssimo frame da
+     timeline). Qualquer select que comece em start_s=0.0 caía exatamente
+     em relative_frame=0 depois da conversão acima, e o marcador nunca era
+     criado — sem erro, sem exceção, só "Marcadores criados: 0". Corrigido
+     usando frame 1 como piso em add_markers_for_segments(). Ver
+     ENGINEERING_REPORT.md pra como foi diagnosticado (log em arquivo).
+  Criar subclipes/bin (MediaPool.AppendToTimeline() numa timeline nova,
+  "Titan Cut Selects") também confirmado funcionando sem ajuste — era o
+  item de maior risco da rodada anterior e passou no primeiro teste real.
 """
 from __future__ import annotations
 
@@ -190,15 +192,25 @@ def add_markers_for_segments(timeline, track_item, segments, color="Green"):
         source_frame = int(round(segment.start_s * fps))
         absolute_frame = clip_timeline_start + (source_frame - clip_left_offset)
         relative_frame = absolute_frame - timeline_start_frame
-        if relative_frame < 0:
-            relative_frame = 0
-        ok = timeline.AddMarker(
-            relative_frame,
-            color,
-            "Titan Cut",
-            f"score {segment.mean_score:.0f} · {segment.duration_s:.1f}s",
-            1,
-        )
+        if relative_frame < 1:
+            # AVISO DE ENGENHARIA (confirmado por teste manual + log):
+            # Timeline.AddMarker(0, ...) retorna False silenciosamente no
+            # Resolve — o frame 0 (primeiríssimo frame da timeline) não
+            # aceita marcador. Qualquer segmento que comece bem no início
+            # do clipe (ex.: primeiro select começando em start_s=0.0) cai
+            # exatamente em relative_frame=0 e o marcador nunca é criado,
+            # sem erro nenhum. Correção: usar frame 1 como piso.
+            relative_frame = 1
+        try:
+            ok = timeline.AddMarker(
+                relative_frame,
+                color,
+                "Titan Cut",
+                f"score {segment.mean_score:.0f} · {segment.duration_s:.1f}s",
+                1,
+            )
+        except Exception:
+            ok = False
         if ok:
             created += 1
     return created

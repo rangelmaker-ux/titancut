@@ -1,15 +1,65 @@
 # Relatório de Engenharia — Titan Cut
 
-Data: 2026-10-28 (atualizado — rodada de features pós-MVP)
+Data: 2026-10-28 (atualizado — rodada de teste manual da UI pós-MVP)
 
-## Implementado nesta rodada — SEM teste manual no Resolve (sessão sem acesso ao computador)
+## Terceiro bug de integração encontrado e corrigido — teste manual desta rodada
 
-A sessão que validou o MVP (análise + marcadores) dentro do Resolve real
-perdeu a conexão com o computador do usuário antes desta rodada de
-features. Tudo abaixo está implementado, compila, e passa nos testes
-automatizados do motor (`tests/test_engine.py`) — mas **a UI nova em si
-ainda não foi clicada dentro do Resolve**. Precisa de uma passada de teste
-manual na próxima sessão com acesso ao computador.
+**"Criar marcadores" reportava "Marcadores criados: 0" mesmo com selects
+encontrados na análise.** Causa raiz, isolada por log em arquivo (mesma
+técnica da rodada anterior, já que o Console do Resolve continua
+inacessível via automação):
+
+```
+add_markers_for_segments: fps=24.0 timeline_start_frame=86400 clip_timeline_start=86400 ...
+  segment start_s=0.000 source_frame=0 absolute_frame=86400 relative_frame=0 ok=False
+```
+
+`Timeline.AddMarker(frameId, ...)` retorna `False` silenciosamente quando
+`frameId=0` — o Resolve não aceita marcador no primeiríssimo frame da
+timeline, sem erro nenhum, sem exceção. Qualquer segmento aprovado que
+comece bem no início do clipe (ex.: `start_s=0.0`, caso comum quando o
+primeiro take da timeline já é um bom take) cai exatamente em
+`relative_frame=0` depois da conversão absoluto→relativo, e o marcador
+nunca é criado. **Correção**: usar frame `1` como piso em vez de `0` em
+`add_markers_for_segments()` (`Titan Cut.py`). **Confirmado corrigido por
+teste manual real**: mesmo clipe/mesmo segmento, antes da correção
+mostrava "Marcadores criados: 0" de forma 100% reproduzível (3 tentativas
+seguidas); depois da correção mostrou "Marcadores criados: 1" e o
+marcador verde apareceu visível na régua da timeline, no frame 1.
+
+## UI pós-MVP (presets, pesos, dip, filtro de movimento, flags) — testada manualmente no Resolve real nesta rodada
+
+- Painel inteiro (presets, slider de dip, 3 sliders de peso, combo de
+  filtro de movimento, botão de subclipes) renderiza sem erro dentro do
+  Resolve.
+- Combo de preset "Talking Head" confirmado cascateando corretamente
+  limiar, dip, os 3 pesos e o filtro de movimento ao ser selecionado.
+- "Analisar timeline" confirmado respeitando pesos/limiar/dip ajustados
+  manualmente e via preset — rodado múltiplas vezes com thresholds
+  diferentes, contagem de selects mudou de forma consistente com o
+  esperado.
+- Flag automática de exposição estourada confirmada disparando
+  corretamente no clipe de teste (`C8920.MP4`, cena com luz de fundo).
+- "Criar marcadores" confirmado funcionando (ver bug acima) — marcador
+  verde visível na posição correta da timeline.
+- **"Criar subclipes (bin)" — confirmado funcionando por teste manual real.**
+  Era o item de maior risco (`MediaPool.AppendToTimeline()` + `SetCurrentTimeline()`
+  numa timeline recém-criada, nunca exercitado antes). Clicado com 1 select
+  aprovado (`C8920.MP4`): criou a timeline "Titan Cut Selects" no Pool de
+  Mídia, trocou automaticamente para ela, e o clipe apareceu corretamente
+  com a duração do segmento aprovado (07:17). Status "Subclipes criados: 1
+  em 'Titan Cut Selects'" confirmado na UI. `GetClipProperty("FPS")` e
+  `AppendToTimeline()` funcionaram como assumido, sem precisar de ajuste.
+- **Ainda não testado isoladamente nesta rodada**: o combo de filtro de
+  movimento ("Só estático" / "Só com movimento") — só foi exercitado
+  indiretamente via presets (que já embutem um filtro).
+
+## Implementado em rodada anterior — SEM teste manual no Resolve (sessão sem acesso ao computador)
+
+Tudo abaixo foi implementado numa sessão que perdeu a conexão com o
+computador do usuário antes de poder testar a UI nova manualmente —
+grande parte já foi validada nesta rodada (ver seção acima); o que ainda
+falta está marcado explicitamente.
 
 - **Pesos ajustáveis** (foco/exposição/movimento) — 3 sliders na UI, substituindo os pesos fixos 40/30/30.
 - **Tolerância de dip ajustável** — slider (0.0s-3.0s), já existia no motor (`dip_tolerance_s`), só não estava exposto na UI.

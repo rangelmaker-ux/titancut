@@ -6,8 +6,8 @@ Inspirado pela abordagem do [Cutdown](https://cutdown.app) (Softworks), mas nati
 
 ## Status
 
-- **Análise + marcadores**: testado de ponta a ponta dentro do DaVinci Resolve real (Windows). Ver [`ENGINEERING_REPORT.md`](ENGINEERING_REPORT.md).
-- **Pesos ajustáveis, dip, filtro de movimento, presets, flags automáticas, subclipes/bin**: implementados e cobertos por teste automatizado do motor (`tests/test_engine.py`), mas a UI nova ainda não foi clicada dentro do Resolve real — próximo passo é testar manualmente na máquina do usuário.
+- **Análise + marcadores + presets + pesos/dip/filtro de movimento ajustáveis + flags automáticas**: testados de ponta a ponta dentro do DaVinci Resolve real (Windows), incluindo um terceiro bug de integração encontrado e corrigido nesta rodada ("Criar marcadores" falhava silenciosamente quando o select começava no frame 0). Ver [`ENGINEERING_REPORT.md`](ENGINEERING_REPORT.md).
+- **Criar subclipes (bin)**: testado de ponta a ponta dentro do DaVinci Resolve real — cria a timeline "Titan Cut Selects" e monta os clipes aprovados corretamente via `AppendToTimeline`.
 - **Instaladores Windows e Mac**: prontos em `installer/windows/` e `installer/mac/`, ainda não rodados numa instalação real.
 
 ## Como funciona
@@ -62,11 +62,11 @@ python3 tests/test_engine.py
 
 ## Roadmap (pós-MVP)
 
-- ~~Presets (Talking Head, Action/Sport, etc.)~~ — implementado, falta testar na UI real
-- ~~Pesos de métrica ajustáveis na UI~~ — implementado, falta testar na UI real
-- ~~Filtro de movimento de câmera (estático, pan, tilt, zoom)~~ — implementado, falta testar na UI real
-- ~~Flags automáticas (clipping, corte brusco, duplicado)~~ — implementado, falta testar na UI real
-- ~~Criação de subclipes/bins além de marcadores~~ — implementado, falta testar na UI real
+- ~~Presets (Talking Head, Action/Sport, etc.)~~ — testado na UI real
+- ~~Pesos de métrica ajustáveis na UI~~ — testado na UI real
+- ~~Filtro de movimento de câmera (estático, pan, tilt, zoom)~~ — implementado, testado só indiretamente via presets
+- ~~Flags automáticas (clipping, corte brusco, duplicado)~~ — testado na UI real
+- ~~Criação de subclipes/bins além de marcadores~~ — testado na UI real
 - ~~Instalador Windows (.bat)~~ — pronto em `installer/windows/`, falta rodar numa instalação real
 - ~~Instalador Mac (.command)~~ — pronto em `installer/mac/`, falta rodar numa instalação real
 - Exportar pra Premiere/Avid/Final Cut — baixa prioridade: o Resolve já exporta EDL/XML/AAF nativamente da timeline atual
