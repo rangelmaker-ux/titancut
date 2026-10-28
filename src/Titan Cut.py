@@ -24,7 +24,7 @@ import os
 import sys
 import threading
 
-sys.path.insert(0, os.path.dirname(__file__))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "Modules"))
 
 import titan_cut_locale as locale  # noqa: E402
 from titan_cut_engine import analyze_video, build_segments, Weights  # noqa: E402

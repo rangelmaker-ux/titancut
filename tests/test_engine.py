@@ -8,7 +8,7 @@ cada métrica e prova que o motor realmente discrimina, em vez de assumir.
 import os
 import sys
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src", "Modules"))
 
 from titan_cut_engine import analyze_video, build_segments, Weights  # noqa: E402
 

@@ -24,13 +24,20 @@ Determinístico e 100% local — sem IA/ML, sem nuvem, mesmo vídeo sempre dá o
 
 ```
 src/
-  Titan Cut.py          # painel principal — conecta ao Resolve via Fusion UIManager
-  titan_cut_engine.py   # motor de análise (CV puro: OpenCV + NumPy)
-  titan_cut_locale.py   # i18n PT-BR/EN/ES (mesmo padrão do Titan Titles Studio)
+  Titan Cut.py             # painel principal — conecta ao Resolve via Fusion UIManager
+  Modules/
+    titan_cut_engine.py    # motor de análise (CV puro: OpenCV + NumPy)
+    titan_cut_locale.py    # i18n PT-BR/EN/ES (mesmo padrão do Titan Titles Studio)
 tests/
-  test_engine.py         # testa o motor contra vídeo sintético (foco/exposição)
-  fixtures/sample.mp4    # vídeo de teste gerado por ffmpeg
+  test_engine.py            # testa o motor contra vídeo sintético (foco/exposição)
+  fixtures/sample.mp4       # vídeo de teste gerado por ffmpeg
 ```
+
+> `titan_cut_engine.py` e `titan_cut_locale.py` ficam dentro de `Modules/`
+> de propósito: o Resolve lista no menu `Workspace > Scripts` qualquer
+> `.py` solto direto na pasta `Edit`/`Utility`, então um arquivo de apoio
+> ali vira um item de menu que não faz nada quando clicado. Só
+> `Titan Cut.py` deve ficar na raiz da pasta de scripts.
 
 ## Rodar os testes do motor
 
