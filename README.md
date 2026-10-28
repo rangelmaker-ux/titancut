@@ -8,7 +8,7 @@ Inspirado pela abordagem do [Cutdown](https://cutdown.app) (Softworks), mas nati
 
 - **Análise + marcadores**: testado de ponta a ponta dentro do DaVinci Resolve real (Windows). Ver [`ENGINEERING_REPORT.md`](ENGINEERING_REPORT.md).
 - **Pesos ajustáveis, dip, filtro de movimento, presets, flags automáticas, subclipes/bin**: implementados e cobertos por teste automatizado do motor (`tests/test_engine.py`), mas a UI nova ainda não foi clicada dentro do Resolve real — próximo passo é testar manualmente na máquina do usuário.
-- **Instalador Windows**: pronto em `installer/windows/`, ainda não rodado numa instalação real.
+- **Instaladores Windows e Mac**: prontos em `installer/windows/` e `installer/mac/`, ainda não rodados numa instalação real.
 
 ## Como funciona
 
@@ -42,6 +42,9 @@ installer/
   windows/
     Instalar_Titan_Cut.bat  # copia src/ pra pasta de Scripts do Resolve + instala opencv-python/numpy
     README.md
+  mac/
+    Instalar_no_Mac.command # idem, para macOS
+    README.md
 ```
 
 > `titan_cut_engine.py` e `titan_cut_locale.py` ficam dentro de `Modules/`
@@ -65,7 +68,7 @@ python3 tests/test_engine.py
 - ~~Flags automáticas (clipping, corte brusco, duplicado)~~ — implementado, falta testar na UI real
 - ~~Criação de subclipes/bins além de marcadores~~ — implementado, falta testar na UI real
 - ~~Instalador Windows (.bat)~~ — pronto em `installer/windows/`, falta rodar numa instalação real
-- Instalador Mac (.command) — seguindo o padrão do [titan-titulos](https://github.com/rangelmaker-ux/titan-titulos)
+- ~~Instalador Mac (.command)~~ — pronto em `installer/mac/`, falta rodar numa instalação real
 - Exportar pra Premiere/Avid/Final Cut — baixa prioridade: o Resolve já exporta EDL/XML/AAF nativamente da timeline atual
 - Identidade visual própria (ícones, cores) — ainda não definida
 
