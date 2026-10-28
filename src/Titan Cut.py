@@ -9,14 +9,22 @@ mostra os scores e cria marcadores na timeline nos trechos que passam no
 limiar escolhido. Sem presets avançados, sem filtro de movimento de câmera
 nesta versão — ver README.md para o roadmap.
 
-AVISO DE ENGENHARIA: este arquivo foi implementado seguindo exatamente a
-API documentada de scripting do Resolve e o padrão de UI já validado no
-Titan Titles Studio (mesmo import, mesmo UIManager/UIDispatcher). O motor
-de análise (titan_cut_engine.py) foi testado de verdade contra vídeo
-sintético. A integração completa com o Resolve real (este arquivo) AINDA
-NÃO foi testada dentro do aplicativo — não há Resolve disponível neste
-ambiente de desenvolvimento. Teste manual no Resolve é o próximo passo
-obrigatório antes de qualquer uso em produção.
+STATUS: testado de ponta a ponta dentro do DaVinci Resolve real (Windows) —
+abre a partir de Workspace > Scripts > Edit > Titan Cut, analisa a timeline
+atual e cria marcadores visíveis na posição correta. Dois bugs de
+integração foram encontrados e corrigidos nesse teste manual:
+
+1. cv2.VideoCapture() sem especificar o backend usava Media Foundation
+   (decodificação por GPU) no Windows, que trava o processo inteiro ao
+   rodar dentro do Resolve (que já usa a GPU pra exibir o mesmo clipe).
+   Corrigido forçando cv2.CAP_FFMPEG (decodificação por software) em
+   titan_cut_engine.py — mais lento (~0.5s por amostra num clipe 4K) mas
+   não trava. Ver comentário em analyze_video().
+2. TimelineItem.GetStart() retorna frame ABSOLUTO (mesmo espaço de
+   Timeline.GetStartFrame(), ex. ~86400 pra uma timeline 01:00:00:00),
+   mas Timeline.AddMarker() espera frame RELATIVO ao início da timeline.
+   Sem a conversão, AddMarker() retornava True mas o marcador nunca
+   aparecia visível. Corrigido em add_markers_for_segments().
 """
 from __future__ import annotations
 
@@ -128,23 +136,32 @@ def list_timeline_clips(timeline):
 def add_markers_for_segments(timeline, track_item, segments, color="Green"):
     """Cria um marcador no início de cada segmento aprovado.
 
-    O deslocamento do clipe na timeline (GetStart) é somado ao tempo do
-    segmento dentro do arquivo de origem, descontando o ponto de entrada
-    do clipe (GetLeftOffset) — ambos em frames, igual ao resto da API do
-    Resolve. O frame rate da timeline converte segundos -> frames.
+    AVISO DE ENGENHARIA (confirmado por teste manual real no Resolve):
+    TimelineItem.GetStart()/GetEnd() retornam frames ABSOLUTOS no mesmo
+    espaço de Timeline.GetStartFrame() (ex.: ~86400+ pra uma timeline que
+    começa em 01:00:00:00) — mas Timeline.AddMarker(frameId, ...) espera
+    frameId RELATIVO ao início da timeline (0 = primeiro frame). Usar o
+    valor absoluto direto cria o marcador bem fora da timeline (nenhum
+    erro, AddMarker retorna True, mas o marcador nunca aparece visível).
+    Por isso subtraímos timeline.GetStartFrame() pra converter pra
+    relativo antes de chamar AddMarker.
     """
     proj, _ = current_project_and_timeline()
     fps = float(proj.GetSetting("timelineFrameRate")) if proj else 25.0
 
-    clip_timeline_start = track_item.GetStart()  # frame na timeline
+    timeline_start_frame = timeline.GetStartFrame()  # frame absoluto inicial da timeline
+    clip_timeline_start = track_item.GetStart()  # frame absoluto onde o clipe começa na timeline
     clip_left_offset = track_item.GetLeftOffset()  # frames cortados no início do clipe de origem
 
     created = 0
     for segment in segments:
         source_frame = int(round(segment.start_s * fps))
-        timeline_frame = clip_timeline_start + (source_frame - clip_left_offset)
+        absolute_frame = clip_timeline_start + (source_frame - clip_left_offset)
+        relative_frame = absolute_frame - timeline_start_frame
+        if relative_frame < 0:
+            relative_frame = 0
         ok = timeline.AddMarker(
-            timeline_frame,
+            relative_frame,
             color,
             "Titan Cut",
             f"score {segment.mean_score:.0f} · {segment.duration_s:.1f}s",

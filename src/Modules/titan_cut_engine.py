@@ -24,7 +24,7 @@ from typing import List, Optional
 import cv2
 import numpy as np
 
-MAX_EDGE = 960  # mesmo teto usado pelo Cutdown — equilíbrio entre precisão e velocidade
+MAX_EDGE = 960  # mesmo teto usado pelo Cutdown — equilíbrio entre precisão e velocidade  # mesmo teto usado pelo Cutdown — equilíbrio entre precisão e velocidade
 
 
 @dataclasses.dataclass

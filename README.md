@@ -6,7 +6,7 @@ Inspirado pela abordagem do [Cutdown](https://cutdown.app) (Softworks), mas nati
 
 ## Status
 
-MVP em desenvolvimento. Ver [`ENGINEERING_REPORT.md`](ENGINEERING_REPORT.md) para o que está **Implementado / Testado / Bloqueado / Não Verificado**.
+MVP funcional, testado de ponta a ponta dentro do DaVinci Resolve real (Windows): analisa, encontra selects e cria marcadores visíveis na posição correta da timeline. Ver [`ENGINEERING_REPORT.md`](ENGINEERING_REPORT.md) para detalhes, incluindo os dois bugs de integração encontrados e corrigidos no teste manual.
 
 ## Como funciona
 
