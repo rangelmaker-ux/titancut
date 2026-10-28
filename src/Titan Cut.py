@@ -24,7 +24,41 @@ import os
 import sys
 import threading
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "Modules"))
+
+def _script_dir():
+    """Localiza a pasta deste script sem depender de __file__, que o
+    Resolve nem sempre define ao rodar via Workspace > Scripts."""
+    for cand in (globals().get("__file__"), sys.argv[0] if sys.argv else None):
+        if cand and os.path.exists(cand):
+            return os.path.dirname(os.path.abspath(cand))
+
+    homes = []
+    if sys.platform == "darwin":
+        homes.append(os.path.expanduser(
+            "~/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts"))
+        homes.append(
+            "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts")
+    elif sys.platform.startswith("win"):
+        homes.append(os.path.join(
+            os.environ.get("APPDATA", ""), "Blackmagic Design", "DaVinci Resolve",
+            "Support", "Fusion", "Scripts"))
+        homes.append(os.path.join(
+            os.environ.get("PROGRAMDATA", ""), "Blackmagic Design", "DaVinci Resolve",
+            "Fusion", "Scripts"))
+    else:
+        homes.append(os.path.expanduser("~/.local/share/DaVinciResolve/Fusion/Scripts"))
+        homes.append("/opt/resolve/Fusion/Scripts")
+
+    for h in homes:
+        for sub in ("Edit", "Comp", "Utility"):
+            p = os.path.join(h, sub)
+            if os.path.isfile(os.path.join(p, "Titan Cut.py")):
+                return p
+    return os.getcwd()
+
+
+SCRIPT_DIR = _script_dir()
+sys.path.insert(0, os.path.join(SCRIPT_DIR, "Modules"))
 
 import titan_cut_locale as locale  # noqa: E402
 from titan_cut_engine import analyze_video, build_segments, Weights  # noqa: E402
