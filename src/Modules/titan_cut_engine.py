@@ -130,7 +130,14 @@ def analyze_video(
     progress_cb, se fornecido, é chamado com (frames_done, frames_total) a
     cada amostra — para a UI mostrar progresso sem travar.
     """
-    cap = cv2.VideoCapture(path)
+    # Força o backend FFmpeg (decodificação por software) em vez do backend
+    # padrão do Windows (Media Foundation / MSMF), que usa decodificação por
+    # hardware (GPU). Rodando dentro do processo do Resolve — que já usa a
+    # GPU pesadamente pra decodificar/exibir o mesmo clipe na timeline — o
+    # MSMF trava o processo inteiro (confirmado: 0% de CPU, Resolve inteiro
+    # sem responder; o mesmo cv2.VideoCapture rodando fora do Resolve, num
+    # Python comum, abre e lê o mesmo arquivo em menos de 1 segundo).
+    cap = cv2.VideoCapture(path, cv2.CAP_FFMPEG)
     if not cap.isOpened():
         raise RuntimeError(f"Não foi possível abrir o vídeo: {path}")
 

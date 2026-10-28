@@ -23,9 +23,9 @@ t0 = time.time()
 import cv2  # noqa: E402
 print(f"  cv2 {cv2.__version__} importado em {time.time() - t0:.2f}s", flush=True)
 
-print(f"Abrindo: {path}", flush=True)
+print(f"Abrindo (backend FFmpeg, igual ao Titan Cut agora): {path}", flush=True)
 t0 = time.time()
-cap = cv2.VideoCapture(path)
+cap = cv2.VideoCapture(path, cv2.CAP_FFMPEG)
 print(f"  VideoCapture() retornou em {time.time() - t0:.2f}s", flush=True)
 
 print(f"  isOpened() = {cap.isOpened()}", flush=True)
