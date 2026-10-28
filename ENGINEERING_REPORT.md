@@ -1,8 +1,29 @@
-# Relatório de Engenharia — Titan Cut (MVP)
+# Relatório de Engenharia — Titan Cut
 
-Data: 2026-10-28 (atualizado após teste manual real no Resolve)
+Data: 2026-10-28 (atualizado — rodada de features pós-MVP)
 
-## Implementado e Testado — fim a fim, dentro do Resolve real (Windows)
+## Implementado nesta rodada — SEM teste manual no Resolve (sessão sem acesso ao computador)
+
+A sessão que validou o MVP (análise + marcadores) dentro do Resolve real
+perdeu a conexão com o computador do usuário antes desta rodada de
+features. Tudo abaixo está implementado, compila, e passa nos testes
+automatizados do motor (`tests/test_engine.py`) — mas **a UI nova em si
+ainda não foi clicada dentro do Resolve**. Precisa de uma passada de teste
+manual na próxima sessão com acesso ao computador.
+
+- **Pesos ajustáveis** (foco/exposição/movimento) — 3 sliders na UI, substituindo os pesos fixos 40/30/30.
+- **Tolerância de dip ajustável** — slider (0.0s-3.0s), já existia no motor (`dip_tolerance_s`), só não estava exposto na UI.
+- **Classificação de tipo de movimento** (estático / pan-tilt / zoom) — heurística de fluxo óptico clássico: magnitude baixa = estático; magnitude alta + correlação com o campo radial (vetores apontando pro/do centro) = zoom; magnitude alta sem essa correlação = pan/tilt. Testado isoladamente com campos de fluxo sintéticos (zero, puramente horizontal, puramente radial) em `test_engine.py` — a primeira versão da heurística tinha um bug (usava `abs(produto escalar)` antes da média, o que classificava até um pan puro como zoom por simetria; corrigido pra usar a média COM sinal).
+- **Filtro de movimento na UI** — combo "Todos / Só estático / Só com movimento", aplicado em `build_segments(motion_filter=...)`.
+- **Presets** — Padrão, Talking Head (prioriza foco, exige estático), Ação/Esporte (prioriza movimento, sem filtro de tipo), Produto/Still (prioriza exposição, exige estático). Combo que pré-popula todos os outros sliders; "Personalizado" não mexe em nada.
+- **Flags automáticas**:
+  - Exposição estourada: ≥30% das amostras do clipe com fração de pixels cortados ≥15%.
+  - Corte brusco: diferença média de pixel ≥28 (0-255) entre amostras consecutivas — detecta quando o conteúdo mudou abruptamente dentro do próprio arquivo (ex. múltiplos takes no mesmo clipe de câmera).
+  - Possível duplicata: hash perceptual (average hash 8x8 = 64 bits) do primeiro frame de cada clipe, comparado entre todos os clipes da timeline por distância de Hamming (≤8 bits = provável duplicata).
+- **Criar subclipes (bin)** — monta uma timeline nova ("Titan Cut Selects") com `MediaPool.AppendToTimeline()`, um item por segmento aprovado de cada clipe. Segue a API pública documentada do Resolve, mas é o item de maior risco desta rodada por não ter sido exercitado: não tenho certeza de 100% se `AppendToTimeline` aceita a timeline recém-criada como alvo implícito (assumi que sim, via `Project.SetCurrentTimeline()` antes de chamar) nem se o nome da propriedade `FPS` em `GetClipProperty("FPS")` é exatamente esse em todas as versões — precisa confirmar na primeira execução real.
+- **Instalador Windows** (`installer/windows/Instalar_Titan_Cut.bat`) — copia `src/Titan Cut.py` e `src/Modules/*.py` pra pasta de Scripts do Resolve, detecta Python do sistema (`py -3` ou `python`) e instala `opencv-python`/`numpy` via pip. Não testado rodando de verdade num Windows limpo.
+
+## Implementado e Testado — fim a fim, dentro do Resolve real (Windows), rodada anterior (MVP)
 
 - **`Titan Cut.py` + `titan_cut_engine.py`**: testado de ponta a ponta dentro do
   DaVinci Resolve real (não só sintaxe/unidade). Fluxo completo confirmado:

@@ -10,7 +10,12 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src", "Modules"))
 
-from titan_cut_engine import analyze_video, build_segments, Weights  # noqa: E402
+import numpy as np  # noqa: E402
+
+from titan_cut_engine import (  # noqa: E402
+    analyze_video, build_segments, detect_duplicate_clips, hamming_distance,
+    MOTION_STATIC, Weights,
+)
 
 FIXTURE = os.path.join(os.path.dirname(__file__), "fixtures", "sample.mp4")
 
@@ -20,8 +25,10 @@ def mean(values):
 
 
 def main():
-    scores = analyze_video(FIXTURE, sample_rate_hz=4.0)
+    analysis = analyze_video(FIXTURE, sample_rate_hz=4.0)
+    scores = analysis.scores
     assert scores, "Nenhuma amostra retornada — engine não leu o vídeo"
+    assert analysis.clip_hash is not None, "Hash perceptual do clipe não foi calculado"
 
     sharp = [s for s in scores if s.time_s < 3.0]
     blur = [s for s in scores if 3.0 <= s.time_s < 6.0]
@@ -57,7 +64,46 @@ def main():
         "FALHOU: trecho nítido/bem exposto não virou select"
     )
 
-    print("\nTODOS OS TESTES PASSARAM — motor discrimina foco e exposição corretamente.")
+    assert any(s.hard_cut for s in scores), (
+        "FALHOU: corte brusco entre os trechos do fixture não foi detectado"
+    )
+
+    # motion_filter com o conjunto vazio de tipos presentes deve zerar os selects
+    present_types = {s.motion_type for s in scores}
+    absent_type = ({MOTION_STATIC, "pan_tilt", "zoom"} - present_types)
+    if absent_type:
+        filtered_out = build_segments(scores, threshold=60.0, motion_filter={next(iter(absent_type))})
+        assert filtered_out == [], "FALHOU: filtro de movimento não excluiu tipo ausente no fixture"
+
+    # Classificação de tipo de movimento: testada isolada, com campos de
+    # fluxo sintéticos conhecidos (não depende do conteúdo do fixture, que
+    # tem movimento aleatório de padrão de teste do ffmpeg).
+    from titan_cut_engine import _classify_motion  # noqa: E402 — função interna, só pro teste
+
+    static_flow = np.zeros((64, 64, 2), dtype=np.float32)
+    _, motion_type = _classify_motion(static_flow)
+    assert motion_type == MOTION_STATIC, f"FALHOU: fluxo zero classificado como {motion_type}"
+
+    pan_flow = np.zeros((64, 64, 2), dtype=np.float32)
+    pan_flow[..., 0] = 5.0  # todo o campo se desloca pra direita = pan
+    _, motion_type = _classify_motion(pan_flow)
+    assert motion_type == "pan_tilt", f"FALHOU: fluxo de pan classificado como {motion_type}"
+
+    yy, xx = np.mgrid[0:64, 0:64].astype(np.float32)
+    zoom_flow = np.stack([xx - 32, yy - 32], axis=-1) * 0.3  # afasta do centro = zoom-in
+    _, motion_type = _classify_motion(zoom_flow)
+    assert motion_type == "zoom", f"FALHOU: fluxo radial classificado como {motion_type}"
+
+    # Hash perceptual: o mesmo hash comparado consigo mesmo é distância 0,
+    # e dois hashes vindos de frames bem diferentes (nítido vs. escuro) devem
+    # ficar bem mais distantes que o limiar de duplicata.
+    assert hamming_distance(analysis.clip_hash, analysis.clip_hash) == 0
+    dup_map = detect_duplicate_clips({"a": analysis.clip_hash, "b": analysis.clip_hash})
+    assert dup_map["a"] == ["b"] and dup_map["b"] == ["a"], (
+        "FALHOU: detecção de duplicata não encontrou o mesmo hash comparado consigo mesmo"
+    )
+
+    print("\nTODOS OS TESTES PASSARAM — motor discrimina foco, exposição, movimento e duplicatas.")
 
 
 if __name__ == "__main__":

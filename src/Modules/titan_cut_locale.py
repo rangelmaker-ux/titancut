@@ -34,6 +34,26 @@ Sobre|About|Acerca de
 Idioma|Language|Idioma
 Taxa de amostragem|Sample rate|Tasa de muestreo
 Configurações|Settings|Configuración
+Preset|Preset|Preset
+Padrão|Default|Predeterminado
+Talking Head|Talking Head|Talking Head
+Ação/Esporte|Action/Sports|Acción/Deportes
+Produto/Still|Product/Still|Producto/Still
+Personalizado|Custom|Personalizado
+Tolerância de queda (dip)|Dip tolerance|Tolerancia de caída
+Movimento de câmera|Camera motion|Movimiento de cámara
+Todos|All|Todos
+Só estático|Static only|Solo estático
+Só com movimento (pan/tilt/zoom)|With motion only (pan/tilt/zoom)|Solo con movimiento (pan/tilt/zoom)
+Criar subclipes (bin)|Create subclips (bin)|Crear subclips (bin)
+Subclipes criados: %s em "Titan Cut Selects"|Subclips created: %s in "Titan Cut Selects"|Subclips creados: %s en "Titan Cut Selects"
+Estático|Static|Estático
+Pan/Tilt|Pan/Tilt|Pan/Tilt
+Zoom|Zoom|Zoom
+exposição estourada|overexposed|sobreexpuesto
+possível duplicado de %s|possible duplicate of %s|posible duplicado de %s
+corte brusco em %ss|hard cut at %ss|corte brusco en %ss
+Analise a timeline primeiro.|Analyze the timeline first.|Analiza el timeline primero.
 '''
 
 TABLE = {}
