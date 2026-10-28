@@ -176,10 +176,17 @@ def run_analysis(clips, threshold, itm, win):
         if not state.running:
             break
 
+        def _set_status(text):
+            itm["StatusLabel"].Text = text
+
         def progress(done, total_frames, _i=i, _name=name):
-            itm["StatusLabel"].Text = locale.translate(
-                "Analisando clipe %s de %s…"
-            ) % (_i + 1, total)
+            # Nunca escreve na UI direto da thread de análise — o UIManager do
+            # Fusion não é thread-safe e trava silenciosamente se você tentar
+            # (foi exatamente esse travamento que o teste manual no Resolve
+            # revelou). Toda atualização de UI precisa passar pelo event loop
+            # principal via AddOnTopLevelEventLoop.
+            text = locale.translate("Analisando clipe %s de %s…") % (_i + 1, total)
+            disp.AddOnTopLevelEventLoop(lambda t=text: _set_status(t))
 
         try:
             scores = analyze_video(path, sample_rate_hz=4.0, weights=Weights(), progress_cb=progress)
