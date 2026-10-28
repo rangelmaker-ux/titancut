@@ -50,9 +50,12 @@ marcador verde apareceu visível na régua da timeline, no frame 1.
   com a duração do segmento aprovado (07:17). Status "Subclipes criados: 1
   em 'Titan Cut Selects'" confirmado na UI. `GetClipProperty("FPS")` e
   `AppendToTimeline()` funcionaram como assumido, sem precisar de ajuste.
-- **Ainda não testado isoladamente nesta rodada**: o combo de filtro de
-  movimento ("Só estático" / "Só com movimento") — só foi exercitado
-  indiretamente via presets (que já embutem um filtro).
+- **Combo de filtro de movimento testado isoladamente** — selecionar "Só
+  com movimento (pan/tilt/zoom)" mudou a contagem de selects de 1 (com
+  "Todos") pra 2 no mesmo clipe/mesmo limiar, confirmando que o filtro
+  está sendo aplicado de verdade (o filtro reparte regiões contínuas em
+  segmentos menores quando parte da região deixa de passar pelo tipo de
+  movimento exigido — comportamento esperado, não um bug).
 
 ## Implementado em rodada anterior — SEM teste manual no Resolve (sessão sem acesso ao computador)
 
