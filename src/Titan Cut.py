@@ -22,7 +22,6 @@ from __future__ import annotations
 
 import os
 import sys
-import threading
 
 
 def _script_dir():
@@ -157,63 +156,26 @@ def add_markers_for_segments(timeline, track_item, segments, color="Green"):
 
 
 # ---------------------------------------------------------------------------
-# Estado da análise (roda em thread separada para não travar a UI)
+# Estado da análise
+#
+# AVISO DE ENGENHARIA (confirmado por teste manual real no Resolve): rodar a
+# análise numa threading.Thread separada — mesmo notificando a UI de volta só
+# por ui.QueueEvent(), o padrão "oficial" usado pelo Titan Titles Studio —
+# travou o processo inteiro (0,2% de CPU no Gerenciador de Tarefas, ou seja,
+# parado, não lento). A ponte de scripting do Resolve (fusionscript/
+# DaVinciResolveScript) não se mostrou segura para chamadas vindas de uma
+# thread diferente da que abriu a conexão, pelo menos não quando há trabalho
+# pesado (OpenCV) acontecendo nela. A solução comprovada é não usar thread
+# nenhuma: processar tudo direto na thread principal e chamar
+# disp.StepLoop() periodicamente para a janela continuar respondendo
+# (mesmo padrão que o Titan Titles Studio usa pra trabalho síncrono longo).
 # ---------------------------------------------------------------------------
 class AnalysisState:
     def __init__(self):
-        self.running = False
         self.results = {}  # file_path -> (scores, segments, track_item)
-        self.lock = threading.Lock()
 
 
 state = AnalysisState()
-
-
-def run_analysis(clips, threshold, itm, win):
-    state.running = True
-    total = len(clips)
-    for i, (name, path, track_item) in enumerate(clips):
-        if not state.running:
-            break
-
-        def _set_status(text):
-            itm["StatusLabel"].Text = text
-
-        def progress(done, total_frames, _i=i, _name=name):
-            # Nunca escreve na UI direto da thread de análise — o UIManager do
-            # Fusion não é thread-safe e trava silenciosamente se você tentar
-            # (foi exatamente esse travamento que o teste manual no Resolve
-            # revelou). Toda atualização de UI precisa passar pelo event loop
-            # principal via AddOnTopLevelEventLoop.
-            text = locale.translate("Analisando clipe %s de %s…") % (_i + 1, total)
-            disp.AddOnTopLevelEventLoop(lambda t=text: _set_status(t))
-
-        try:
-            scores = analyze_video(path, sample_rate_hz=4.0, weights=Weights(), progress_cb=progress)
-            segments = build_segments(scores, threshold=threshold)
-        except Exception as exc:  # noqa: BLE001 — reporta qualquer falha de leitura de arquivo
-            scores, segments = [], []
-            print(f"[Titan Cut] falha ao analisar {path}: {exc}")
-
-        with state.lock:
-            state.results[path] = (scores, segments, track_item)
-
-        disp.AddOnTopLevelEventLoop(lambda n=name, s=segments: refresh_results_row(itm, n, s))
-
-    state.running = False
-    disp.AddOnTopLevelEventLoop(lambda: finish_analysis(itm))
-
-
-def refresh_results_row(itm, name, segments):
-    current = itm["ResultsList"].Text or ""
-    line = f"{name}: {len(segments)} select(s)"
-    itm["ResultsList"].Text = (current + "\n" + line).strip()
-
-
-def finish_analysis(itm):
-    itm["AnalyzeButton"].Enabled = True
-    itm["CreateMarkersButton"].Enabled = True
-    itm["StatusLabel"].Text = locale.translate("Selects encontrados")
 
 
 def on_analyze_clicked(win, itm):
@@ -230,9 +192,44 @@ def on_analyze_clicked(win, itm):
     itm["CreateMarkersButton"].Enabled = False
     itm["ResultsList"].Text = ""
     threshold = float(itm["ThresholdSlider"].Value)
+    total = len(clips)
+    state.results = {}
 
-    t = threading.Thread(target=run_analysis, args=(clips, threshold, itm, win), daemon=True)
-    t.start()
+    for i, (name, path, track_item) in enumerate(clips):
+        itm["StatusLabel"].Text = locale.translate("Analisando clipe %s de %s…") % (i + 1, total)
+        _pump(win)
+
+        def progress(done, total_frames):
+            # Chamado várias vezes por clipe — mantém a janela respondendo
+            # durante a decodificação de clipes longos.
+            _pump(win)
+
+        try:
+            scores = analyze_video(path, sample_rate_hz=4.0, weights=Weights(), progress_cb=progress)
+            segments = build_segments(scores, threshold=threshold)
+        except Exception as exc:  # noqa: BLE001 — reporta qualquer falha de leitura de arquivo
+            scores, segments = [], []
+            print(f"[Titan Cut] falha ao analisar {name}: {exc}")
+
+        state.results[path] = (scores, segments, track_item)
+        current = itm["ResultsList"].Text or ""
+        line = f"{name}: {len(segments)} select(s)"
+        itm["ResultsList"].Text = (current + "\n" + line).strip()
+        _pump(win)
+
+    itm["AnalyzeButton"].Enabled = True
+    itm["CreateMarkersButton"].Enabled = True
+    itm["StatusLabel"].Text = locale.translate("Selects encontrados")
+
+
+def _pump(win):
+    """Processa a fila de eventos do Fusion pra janela não parecer travada
+    durante a análise síncrona (sem isso, clicar/arrastar/fechar a janela
+    não responderia até o fim do processamento)."""
+    try:
+        disp.StepLoop()
+    except Exception as exc:  # noqa: BLE001 — nunca interrompe a análise por isso
+        print(f"[Titan Cut] StepLoop falhou: {exc}")
 
 
 def on_create_markers_clicked(win, itm):
@@ -240,10 +237,9 @@ def on_create_markers_clicked(win, itm):
     if timeline is None:
         return
     created = 0
-    with state.lock:
-        for path, (scores, segments, track_item) in state.results.items():
-            if segments:
-                created += add_markers_for_segments(timeline, track_item, segments)
+    for path, (scores, segments, track_item) in state.results.items():
+        if segments:
+            created += add_markers_for_segments(timeline, track_item, segments)
     itm["StatusLabel"].Text = locale.translate("Marcadores criados: %s") % created
 
 
